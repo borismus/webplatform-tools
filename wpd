@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+
+DEFAULT_USERNAME=None
+
 from optparse import OptionParser
 from httplib import HTTPConnection
 import urllib, urllib2
@@ -6,8 +9,14 @@ import json
 import sys
 import getpass
 
-parser = OptionParser()
-parser.add_option('-d', '--delete')
+usage = """usage: %prog command <arguments>
+commands:
+
+ls <prefix>
+edit <page> <content>
+"""
+
+parser = OptionParser(usage=usage)
 parser.add_option('-u', '--username')
 
 
@@ -43,7 +52,7 @@ class WPDConnection:
 
   def login_required(self):
     if not self.is_logged_in:
-      raise Exception, 'Not logged in!'
+      raise Exception, 'user %s is not logged in.' %self.name
 
   def ls(self, prefix='', offset=0, limit=20):
     """Lists all pages under the specified prefix. If no prefix is specified,
@@ -103,8 +112,8 @@ if __name__ == '__main__':
     sys.exit(1)
 
   command = args[0]
-  username = options.username
-  conn = WPDConnection(username or 'Borismus')
+  username = options.username or DEFAULT_USERNAME
+  conn = WPDConnection(username)
 
   if command == 'ls':
     prefix = (len(args) == 2 and args[1])
@@ -119,5 +128,3 @@ if __name__ == '__main__':
     conn.login()
     conn.edit(page, content)
 
-    echo "<page content>" | wpd replace <page>
-    cat <content file> | wpd replace <page> -s <section>

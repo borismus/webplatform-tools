@@ -4,27 +4,27 @@ Get a directory listing of all things under a specified prefix:
 
     wpd ls <prefix>
 
-Replace a specific page:
+Replace contents of a specific page:
 
-    wpd edit <page> <content>
+    wpd edit <page> <content> -u <username>
 
 
 # Not implemented yet
 
-Replace a section in a specified page
+Replace section contents in a specified page:
 
     wpd edit <page> -s <section> <content>
 
-Stdin versions of editing for convenience
+Stdin versions of editing for convenience:
 
     echo "<page content>" | wpd replace <page>
     cat <content file> | wpd replace <page> -s <section>
 
-Modify flags
+Modify flags:
 
     wpd flag <page> <flag>
     wpd flag -d <page> <flag>
 
-Get an oDesk worker to improve a particular page on the wiki.
+Get an oDesk worker to improve a particular page on the wiki:
 
     wpd odesk-fix <page> -i <special instructions>
