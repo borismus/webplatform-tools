@@ -1,0 +1,123 @@
+#!/usr/bin/env python
+from optparse import OptionParser
+from httplib import HTTPConnection
+import urllib, urllib2
+import json
+import sys
+import getpass
+
+parser = OptionParser()
+parser.add_option('-d', '--delete')
+parser.add_option('-u', '--username')
+
+
+API_ROOT = 'http://docs.webplatform.org/w/api.php?'
+DEFAULT_PARAMS = {'format': 'json'}
+
+class WPDConnection:
+
+  def __init__(self, name=None):
+    self.name = name
+    self.is_logged_in = False
+
+    cookie_handler = urllib2.HTTPCookieProcessor()
+    redirect_handler = urllib2.HTTPRedirectHandler()
+    self.opener = urllib2.build_opener(redirect_handler, cookie_handler)
+
+  def login(self):
+    params = {
+      'action': 'login',
+      'lgname': self.name,
+      'lgpassword': getpass.getpass()
+    }
+    params.update(DEFAULT_PARAMS)
+
+    resp = json.loads(self.opener.open(API_ROOT, urllib.urlencode(params)).read())
+    params['lgtoken'] = resp['login']['token']
+    # Now use the token to do another request.
+    resp = json.loads(self.opener.open(API_ROOT, urllib.urlencode(params)).read())
+    success = resp['login']['result'] == 'Success'
+    if success:
+      self.edit_token = resp['login']['lgtoken']
+      self.is_logged_in = True
+
+  def login_required(self):
+    if not self.is_logged_in:
+      raise Exception, 'Not logged in!'
+
+  def ls(self, prefix='', offset=0, limit=20):
+    """Lists all pages under the specified prefix. If no prefix is specified,
+    lists all pages"""
+    if not prefix:
+      prefix = ''
+
+    params = {
+        'action': 'query',
+        'list': 'allpages',
+        'apprefix': prefix,
+        'aplimit': limit + 1
+    }
+    params.update(DEFAULT_PARAMS)
+    resp = json.loads(self.opener.open(API_ROOT, urllib.urlencode(params)).read())
+    page_json = resp['query']['allpages']
+    page_list = [p['title'] for p in page_json]
+    return page_list
+
+  def get_edit_token(self, page):
+    params = {
+        'action': 'query',
+        'titles': page,
+        'intoken': 'edit',
+        'prop': 'info'
+    }
+    params.update(DEFAULT_PARAMS)
+    url = API_ROOT + urllib.urlencode(params)
+    resp = json.loads(self.opener.open(url).read())
+    pages = resp['query']['pages'];
+    page = pages[pages.keys()[0]]
+    return page['edittoken']
+
+  def edit(self, page, content, section=None):
+    """Replaces the content for the particular page or optionally just the
+    section."""
+    self.login_required()
+    edittoken = self.get_edit_token(page)
+    params = {
+        'action': 'edit',
+        'list': 'allpages',
+        'title': page,
+        'summary': 'summary',
+        'text': content,
+        'token': edittoken
+    }
+    params.update(DEFAULT_PARAMS)
+    resp = json.loads(self.opener.open(API_ROOT, urllib.urlencode(params)).read())
+    print resp
+
+
+
+if __name__ == '__main__':
+  (options, args) = parser.parse_args()
+  if len(args) == 0:
+    print 'wpd command'
+    sys.exit(1)
+
+  command = args[0]
+  username = options.username
+  conn = WPDConnection(username or 'Borismus')
+
+  if command == 'ls':
+    prefix = (len(args) == 2 and args[1])
+    print '\n'.join(conn.ls(prefix))
+
+  if command == 'edit':
+    if len(args) != 3:
+      print 'wpd edit <page> <content>'
+      sys.exit(1)
+    page = args[1]
+    content = args[2]
+    conn.login()
+    conn.edit(page, content)
+
+    echo "<page content>" | wpd replace <page>
+    cat <content file> | wpd replace <page> -s <section>
